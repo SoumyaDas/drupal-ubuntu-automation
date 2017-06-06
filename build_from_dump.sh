@@ -30,13 +30,18 @@ DRUSH=$(which drush) &> /dev/null \
 which git &> /dev/null \
   || { echo 'Missing git. Aborting...'>&2; exit 127; }
 
-# Import DATABASE
-DB=$2
-echo 'Importing ${DB}.sql'
+# Import DATABASE. Third argument '0' to skipp db import and '1' for importing db.
+if [ "$3" -eq "1" ]
+then
+  DB=$2
+  echo 'Importing ${DB}.sql'
+  drush sql-create --db-url=${DB_DRIVER}://${DB_USER}:${DB_PASS}@${DB_HOST}/${DB} -y
+  drush sql-drop --db-url=${DB_DRIVER}://${DB_USER}:${DB_PASS}@${DB_HOST}/${DB} -y
+  drush sql-cli --db-url=${DB_DRIVER}://${DB_USER}:${DB_PASS}@${DB_HOST}/${DB} < $2/database/$2.sql
+else
+  echo 'Skipped database import.'
+fi
 
-#drush sql-create --db-url=${DB_DRIVER}://${DB_USER}:${DB_PASS}@${DB_HOST}/${DB} -y
-#drush sql-drop --db-url=${DB_DRIVER}://${DB_USER}:${DB_PASS}@${DB_HOST}/${DB} -y
-#drush sql-cli --db-url=${DB_DRIVER}://${DB_USER}:${DB_PASS}@${DB_HOST}/${DB} < $2/database/$2.sql
 
 echo 'Adding database settings to settings.php'
 BUILD_DIR=${SHARED_DIR}/${BUILD}
@@ -78,7 +83,7 @@ cd ${WEB_DIR}
 echo -ne "# Symlink ${BUILD_DIR} to ${WEB_DIR}/${BUILD}... "
 if [ -L ${BUILD} ] ; then
   echo -ne "# Symlink ${BUILD} already exists, unlink ${BUILD}... "
-  unlink ${BUILD} 2>&1 \
+  sudo unlink ${BUILD} 2>&1 \
     && echo -e "done\n" \
     || { echo -e  "FAILED 2!\n"; exit 2; }
 fi
@@ -195,8 +200,13 @@ cd ${WEB_DIR}/${BUILD}
 drush pm-disable securepages -y
 drush pm-disable paranoia -y
 
-#drush sqlq "UPDATE `system` SET `status` = '0' WHERE `system`.`filename` = 'sites/all/modules/security/securepages/securepages.module';
-"
+# Add default htaccess
+cp /home/vagrant/build/.htaccess .
+
+#Create a new administrator user. Permissions can be changed according to the site.
+drush sqlq "UPDATE users SET name = 'admin' WHERE users.uid = 1;"
+drush upwd admin --password="admin"
+
 echo "${BUILD}" >> $FILE
 
 exit 0

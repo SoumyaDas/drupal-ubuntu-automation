@@ -50,7 +50,7 @@ cd ${WEB_DIR}
 BUILD_DIR=${SHARED_DIR}/${BUILD}
 if [ -L ${DOC_ROOT} ] ; then
   echo -ne "# Symlink ${BUILD} already exists, unlink ${BUILD}... "
-  unlink ${DOC_ROOT} 2>&1 \
+  sudo unlink ${DOC_ROOT} 2>&1 \
     && echo -e "done\n" \
     || { echo -e  "FAILED 2!\n"; exit 2; }
 fi
